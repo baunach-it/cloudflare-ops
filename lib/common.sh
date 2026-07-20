@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Gemeinsame Helper fuer alle cloudflare-ops Kommandos.
-# Wird von den Skripten in commands/ gesourced.
+# Shared helpers for all cloudflare-ops commands.
+# Sourced by the scripts in commands/.
 
 log() { printf '[cloudflare-ops] %s\n' "$*"; }
 warn() { printf '[cloudflare-ops] WARN: %s\n' "$*" >&2; }
@@ -9,29 +9,28 @@ die() {
   exit 1
 }
 
-# Pflicht-Env pruefen und Token einmalig gegen die API verifizieren.
+# Check the required env vars and verify the token against the API once.
 #
-# Das Verifizieren ist nicht kosmetisch: das Skript aus der Cloudflare-Doku
-# laeuft bei ungueltigem Token in eine Endlosschleife, weil jeder delete-Aufruf
-# scheitert, die Deployment-Liste sich nie leert und der Loop endlos neu startet.
-# Wir brechen stattdessen sofort ab.
+# The verification is not cosmetic: the script from Cloudflare's docs spins
+# forever on an invalid token, because every delete call fails, the deployment
+# list never empties and the loop restarts endlessly. We abort right away.
 preflight() {
   [ -n "${CLOUDFLARE_API_TOKEN:-}" ] ||
-    die "CLOUDFLARE_API_TOKEN ist nicht gesetzt (--env-file mitgeben?)"
+    die "CLOUDFLARE_API_TOKEN is not set (forgot --env-file?)"
   [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] ||
-    die "CLOUDFLARE_ACCOUNT_ID ist nicht gesetzt (--env-file mitgeben?)"
+    die "CLOUDFLARE_ACCOUNT_ID is not set (forgot --env-file?)"
 
   if ! wrangler whoami >/dev/null 2>&1; then
-    die "Authentifizierung fehlgeschlagen. CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID pruefen."
+    die "Authentication failed. Check CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID."
   fi
 }
 
-# ID des aktiven Production-Deployments eines Pages-Projekts.
+# ID of a Pages project's active production deployment.
 #
-# Wranglers JSON-Feldnamen haben sich zwischen Major-Versionen mehrfach
-# geaendert (Id vs. id, canonical_deployment vs. latest_deployment), darum die
-# Fallback-Kette. Gibt leeren String zurueck, wenn nichts ermittelbar ist —
-# der Aufrufer faellt dann auf die Laufzeit-Erkennung zurueck.
+# Wrangler's JSON field names have changed several times across major versions
+# (Id vs. id, canonical_deployment vs. latest_deployment), hence the fallback
+# chain. Returns an empty string if nothing can be determined — the caller then
+# falls back to runtime detection.
 pages_production_deployment_id() {
   local project="$1"
   wrangler pages project list --json 2>/dev/null |
@@ -44,7 +43,7 @@ pages_production_deployment_id() {
     ' 2>/dev/null || true
 }
 
-# Alle Deployment-IDs eines Pages-Projekts, eine pro Zeile.
+# All deployment IDs of a Pages project, one per line.
 pages_deployment_ids() {
   local project="$1"
   wrangler pages deployment list --project-name "$project" --json |

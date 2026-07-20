@@ -5,13 +5,13 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-pages-list-projects — listet die Pages-Projekte des Accounts
+pages-list-projects — list the account's Pages projects
 
 Usage:
   pages-list-projects [--json]
 
 Options:
-  --json     Rohes wrangler-JSON ausgeben
+  --json     Print raw wrangler JSON
   --help
 EOF
 }
@@ -27,7 +27,7 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
-    *) die "unbekannte Option '$1' (--help fuer Hilfe)" ;;
+    *) die "unknown option '$1' (see --help)" ;;
   esac
 done
 

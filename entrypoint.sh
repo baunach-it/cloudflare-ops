@@ -5,26 +5,26 @@ COMMAND_DIR="/usr/local/lib/cloudflare-ops/commands"
 
 usage() {
   cat <<'EOF'
-cloudflare-ops — Wartungs-Skripte fuer Cloudflare Pages/Workers
+cloudflare-ops — maintenance scripts for Cloudflare Pages/Workers
 
 Usage:
   docker run --rm --env-file .env baunach/cloudflare-ops <command> [options]
 
 Commands:
-  pages-purge-deployments   Loescht alle Deployments eines Pages-Projekts
-                            (ausser dem aktiven Production-Deployment)
-  pages-delete-project      Purge + anschliessendes Loeschen des Projekts
-  pages-list-projects       Listet alle Pages-Projekte des Accounts
-  worker-delete             Loescht einen Worker samt Versionen
-  wrangler                  Beliebiges wrangler-Kommando durchreichen
-  version                   Wrangler-Version ausgeben
-  help                      Diese Hilfe
+  pages-purge-deployments   Delete every deployment of a Pages project
+                            (except the active production deployment)
+  pages-delete-project      Purge, then delete the project
+  pages-list-projects       List the account's Pages projects
+  worker-delete             Delete a Worker and its versions
+  wrangler                  Pass through an arbitrary wrangler command
+  version                   Print the wrangler version
+  help                      This help
 
-Environment (Pflicht):
-  CLOUDFLARE_API_TOKEN      API-Token mit Pages-/Workers-Edit-Rechten
-  CLOUDFLARE_ACCOUNT_ID     Account-ID
+Environment (required):
+  CLOUDFLARE_API_TOKEN      API token with Pages/Workers edit permissions
+  CLOUDFLARE_ACCOUNT_ID     Account ID
 
-Jedes Kommando kennt --help.
+Every command supports --help.
 EOF
 }
 
@@ -46,7 +46,7 @@ esac
 
 script="${COMMAND_DIR}/${cmd}.sh"
 if [ ! -f "$script" ]; then
-  echo "cloudflare-ops: unbekanntes Kommando '${cmd}'" >&2
+  echo "cloudflare-ops: unknown command '${cmd}'" >&2
   echo >&2
   usage >&2
   exit 2

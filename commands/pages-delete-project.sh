@@ -5,16 +5,16 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-pages-delete-project — purged alle Deployments und loescht danach das Projekt
+pages-delete-project — purge all deployments, then delete the project
 
 Usage:
   pages-delete-project --project <name> --yes [options]
 
 Options:
-  --project, --project-name <name>   Pages-Projekt (Pflicht)
-  --yes                              Bestaetigung (Pflicht, da destruktiv)
-  --dry-run                          Nur zeigen, was passieren wuerde
-  --max-rounds <n>                   an den Purge durchgereicht
+  --project, --project-name <name>   Pages project (required)
+  --yes                              Confirmation (required, destructive)
+  --dry-run                          Only show what would happen
+  --max-rounds <n>                   Passed through to the purge
   --help
 EOF
 }
@@ -27,7 +27,7 @@ PURGE_ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --project | --project-name)
-      PROJECT="${2:?--project braucht einen Wert}"
+      PROJECT="${2:?--project needs a value}"
       shift 2
       ;;
     --yes)
@@ -40,37 +40,37 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --max-rounds)
-      PURGE_ARGS+=(--max-rounds "${2:?--max-rounds braucht einen Wert}")
+      PURGE_ARGS+=(--max-rounds "${2:?--max-rounds needs a value}")
       shift 2
       ;;
     --help | -h)
       usage
       exit 0
       ;;
-    *) die "unbekannte Option '$1' (--help fuer Hilfe)" ;;
+    *) die "unknown option '$1' (see --help)" ;;
   esac
 done
 
 [ -n "$PROJECT" ] || {
   usage >&2
-  die "--project ist Pflicht"
+  die "--project is required"
 }
 
 if [ "$CONFIRM" != 1 ] && [ "$DRY_RUN" != 1 ]; then
-  die "--yes fehlt. Das Loeschen von '${PROJECT}' ist nicht rueckgaengig zu machen."
+  die "--yes is missing. Deleting '${PROJECT}' cannot be undone."
 fi
 
 preflight
 
-log "Schritt 1/2: Deployments von '${PROJECT}' purgen"
+log "Step 1/2: purging deployments of '${PROJECT}'"
 /usr/local/lib/cloudflare-ops/commands/pages-purge-deployments.sh \
   --project "$PROJECT" "${PURGE_ARGS[@]+"${PURGE_ARGS[@]}"}"
 
 if [ "$DRY_RUN" = 1 ]; then
-  log "--dry-run: Projekt '${PROJECT}' wird NICHT geloescht."
+  log "--dry-run: project '${PROJECT}' will NOT be deleted."
   exit 0
 fi
 
-log "Schritt 2/2: Projekt '${PROJECT}' loeschen"
+log "Step 2/2: deleting project '${PROJECT}'"
 wrangler pages project delete "$PROJECT" --yes
-log "Projekt '${PROJECT}' geloescht."
+log "Project '${PROJECT}' deleted."

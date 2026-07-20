@@ -1,34 +1,36 @@
 # cloudflare-ops
 
-Docker-Image mit Wartungs-Skripten fuer Cloudflare Pages/Workers. Sub-Bereich
-`cloudflare/` im Tenant `baunach`, Git-Org `Docker`, Registry `baunach/cloudflare-ops`.
+Docker image with maintenance scripts for Cloudflare Pages/Workers. Sub-area
+`cloudflare/` in tenant `baunach`, git org `Docker`, registry `baunach/cloudflare-ops`.
 
-## Struktur
+## Structure
 
-- `entrypoint.sh` — Dispatcher, mappt Subcommand auf `commands/<name>.sh`
-- `commands/` — ein Skript pro Subcommand
-- `lib/common.sh` — gemeinsame Helper (`preflight`, Logging, JSON-Extraktion)
+- `entrypoint.sh` — dispatcher, maps a subcommand to `commands/<name>.sh`
+- `commands/` — one script per subcommand
+- `lib/common.sh` — shared helpers (`preflight`, logging, JSON extraction)
 
-Neues Skript = neue Datei in `commands/`, executable, mit `--help`. Kein
-Registrierungs-Schritt noetig, der Dispatcher findet sie ueber den Dateinamen.
+A new script means a new file in `commands/`, executable, with `--help`. No
+registration step needed — the dispatcher finds it by filename.
 
-## Konventionen
+## Conventions
 
-- Bash mit `set -euo pipefail`, Helper aus `lib/common.sh` sourcen.
-- Destruktive Kommandos verlangen `--yes` und bieten `--dry-run`.
-- Jede Schleife gegen die API braucht eine Abbruchbedingung (Fortschritts-Check
-  + `--max-rounds`) — siehe [[concepts/cloudflare/pages-deployment-purge]].
-- Wrangler-JSON-Felder sind versionsabhaengig (`Id` vs. `id`); Zugriffe mit
-  Fallback-Kette in `lib/common.sh` kapseln, nicht inline im Kommando.
-- Credentials ausschliesslich per Env (`--env-file`), nie ins Image.
+- Bash with `set -euo pipefail`, source the helpers from `lib/common.sh`.
+- Destructive commands require `--yes` and offer `--dry-run`.
+- Every loop against the API needs a termination condition (progress check plus
+  `--max-rounds`) — see [[concepts/cloudflare/pages-deployment-purge]].
+- Wrangler JSON fields are version-dependent (`Id` vs. `id`); wrap accesses in a
+  fallback chain in `lib/common.sh` rather than inline in the command.
+- User-facing text (README, CLI help, log and error messages) is English.
+- Credentials only via env (`--env-file`), never baked into the image.
 
 ## Build
 
-Image-Build laeuft in CI (GitHub Actions nach gitea->GitHub-Mirror). Lokal:
+The image build runs in CI (GitHub Actions after the gitea→GitHub mirror).
+Locally:
 
 ```bash
 docker build -t cloudflare-ops:dev .
 docker run --rm cloudflare-ops:dev help
 ```
 
-Image-Konventionen des Tenants: [[concepts/postgres/image-konventionen]].
+Tenant-wide image conventions: [[concepts/postgres/image-konventionen]].

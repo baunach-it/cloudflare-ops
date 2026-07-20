@@ -2,14 +2,14 @@ ARG BASE_IMAGE_VERSION=22-alpine
 
 FROM node:${BASE_IMAGE_VERSION}
 
-# Wrangler wird fest ins Image gepinnt — kein npx-Download zur Laufzeit,
-# damit ein Run reproduzierbar ist und ohne npm-Registry-Zugriff funktioniert.
+# Wrangler is pinned into the image — no npx download at runtime, so a run is
+# reproducible and works without access to the npm registry.
 ARG WRANGLER_VERSION=latest
 
 ENV CLOUDFLARE_API_TOKEN=""
 ENV CLOUDFLARE_ACCOUNT_ID=""
 
-# CI=true unterdrueckt Wranglers interaktive Prompts (Telemetrie, Update-Hinweis).
+# CI=true suppresses wrangler's interactive prompts (telemetry, update notice).
 ENV CI=true
 ENV WRANGLER_SEND_METRICS=false
 
@@ -23,7 +23,7 @@ COPY commands/ /usr/local/lib/cloudflare-ops/commands/
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/lib/cloudflare-ops/commands/*.sh
 
-# Wrangler legt Cache/Config unter $HOME ab — Container laeuft unprivilegiert.
+# Wrangler stores cache/config under $HOME — the container runs unprivileged.
 USER node
 ENV HOME=/home/node
 

@@ -5,19 +5,19 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-pages-purge-deployments — loescht alle Deployments eines Pages-Projekts
+pages-purge-deployments — delete every deployment of a Pages project
 
-Das aktive Production-Deployment bleibt erhalten (Cloudflare laesst es nicht
-loeschen). Danach ist das Projekt ueber Dashboard bzw. pages-delete-project
-loeschbar.
+The active production deployment is kept (Cloudflare refuses to delete it).
+Afterwards the project can be deleted through the dashboard or via
+pages-delete-project.
 
 Usage:
   pages-purge-deployments --project <name> [options]
 
 Options:
-  --project, --project-name <name>   Pages-Projekt (Pflicht)
-  --dry-run                          Nur zaehlen, nichts loeschen
-  --max-rounds <n>                   Abbruch nach n Listen-Runden (Default: 200)
+  --project, --project-name <name>   Pages project (required)
+  --dry-run                          Only count, delete nothing
+  --max-rounds <n>                   Abort after n list rounds (default: 200)
   --help
 EOF
 }
@@ -29,7 +29,7 @@ MAX_ROUNDS=200
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --project | --project-name)
-      PROJECT="${2:?--project braucht einen Wert}"
+      PROJECT="${2:?--project needs a value}"
       shift 2
       ;;
     --dry-run)
@@ -37,29 +37,29 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --max-rounds)
-      MAX_ROUNDS="${2:?--max-rounds braucht einen Wert}"
+      MAX_ROUNDS="${2:?--max-rounds needs a value}"
       shift 2
       ;;
     --help | -h)
       usage
       exit 0
       ;;
-    *) die "unbekannte Option '$1' (--help fuer Hilfe)" ;;
+    *) die "unknown option '$1' (see --help)" ;;
   esac
 done
 
 [ -n "$PROJECT" ] || {
   usage >&2
-  die "--project ist Pflicht"
+  die "--project is required"
 }
 
 preflight
 
 prod_id="$(pages_production_deployment_id "$PROJECT")"
 if [ -n "$prod_id" ]; then
-  log "Production-Deployment: ${prod_id} (wird uebersprungen)"
+  log "Production deployment: ${prod_id} (will be skipped)"
 else
-  log "Production-Deployment nicht vorab ermittelbar — wird zur Laufzeit erkannt."
+  log "Production deployment could not be determined up front — detecting at runtime."
 fi
 
 deleted_total=0
@@ -68,7 +68,7 @@ round=0
 while :; do
   round=$((round + 1))
   if [ "$round" -gt "$MAX_ROUNDS" ]; then
-    die "Abbruch nach ${MAX_ROUNDS} Runden — Deployment-Liste leert sich nicht."
+    die "Aborting after ${MAX_ROUNDS} rounds — the deployment list is not emptying."
   fi
 
   ids="$(pages_deployment_ids "$PROJECT")"
@@ -79,21 +79,21 @@ while :; do
   fi
 
   if [ -z "$to_delete" ]; then
-    log "Fertig. ${deleted_total} Deployment(s) geloescht. Verbleibend: ${prod_id:-keins}"
+    log "Done. Deleted ${deleted_total} deployment(s). Remaining: ${prod_id:-none}"
     break
   fi
 
   count="$(printf '%s\n' "$to_delete" | wc -l | tr -d ' ')"
-  log "Runde ${round}: ${count} Deployment(s) zu loeschen"
+  log "Round ${round}: ${count} deployment(s) to delete"
 
   if [ "$DRY_RUN" = 1 ]; then
-    log "--dry-run: nichts geloescht."
+    log "--dry-run: nothing deleted."
     break
   fi
 
-  # Fortschritts-Wachhund: wenn eine ganze Runde weder etwas geloescht noch das
-  # Production-Deployment identifiziert hat, dreht der Loop leer (Rechte fehlen,
-  # API-Fehler, ...). Dann abbrechen statt endlos weiterzulaufen.
+  # Progress watchdog: if a whole round neither deleted anything nor identified
+  # the production deployment, the loop is spinning (missing permissions, API
+  # errors, ...). Abort instead of running forever.
   progressed=0
 
   while IFS= read -r id; do
@@ -102,15 +102,15 @@ while :; do
       deleted_total=$((deleted_total + 1))
       progressed=1
     elif printf '%s' "$output" | grep -q "active production deployment"; then
-      log "Production-Deployment erkannt: ${id}"
+      log "Production deployment detected: ${id}"
       prod_id="$id"
       progressed=1
     else
-      warn "Loeschen von ${id} fehlgeschlagen: $(printf '%s' "$output" | tr '\n' ' ')"
+      warn "Failed to delete ${id}: $(printf '%s' "$output" | tr '\n' ' ')"
     fi
   done <<<"$to_delete"
 
   if [ "$progressed" = 0 ]; then
-    die "Runde ${round} ohne Fortschritt — Abbruch. Token-Rechte (Pages:Edit) pruefen."
+    die "Round ${round} made no progress — aborting. Check the token permissions (Pages:Edit)."
   fi
 done

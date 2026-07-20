@@ -1,96 +1,96 @@
-# Docker Image für Cloudflare-Wartungsaufgaben
+# Docker Image for Cloudflare Maintenance Tasks
 
-Sammel-Image für wiederkehrende Cloudflare-Aufräumarbeiten, die über die UI
-nicht (mehr) gehen. Ein Image, mehrere Subcommands — neue Skripte kommen als
-weitere Datei unter `commands/` dazu, ohne neues Repo/CI/Registry-Setup.
+Collection image for recurring Cloudflare cleanup work that cannot be done
+through the dashboard. One image, multiple subcommands — new scripts are added
+as another file under `commands/`, without setting up a new repo, CI pipeline or
+registry entry.
 
 [Dockerfile](https://github.com/baunach-it/cloudflare-ops/blob/main/Dockerfile)
 
-## Hintergrund
+## Background
 
-Cloudflare **Pages**-Projekte mit vielen Deployments lassen sich weder im
-Dashboard noch per API in einem Rutsch löschen — die Deployments müssen vorher
-einzeln weg
-([Known Issue](https://developers.cloudflare.com/pages/platform/known-issues/#delete-a-project-with-a-high-amount-of-deployments)).
+Cloudflare **Pages** projects with many deployments cannot be deleted through
+the dashboard or the API — the deployments have to be removed one by one first
+([known issue](https://developers.cloudflare.com/pages/platform/known-issues/#delete-a-project-with-a-high-amount-of-deployments)).
 
-Für **Workers** gilt das nicht: dort gibt es weder ein Deployment-Limit noch
-eine Einzel-Löschung von Versionen (`wrangler versions delete` existiert nicht).
-`wrangler delete` räumt den Worker komplett ab. Der Subcommand `worker-delete`
-ist deshalb nur ein dünner Wrapper für dieselbe Auth-Quelle.
+This does not apply to **Workers**: there is neither a deployment limit nor a
+way to delete individual versions (`wrangler versions delete` does not exist).
+`wrangler delete` removes the Worker in one go. The `worker-delete` subcommand
+is therefore only a thin wrapper, so both cases share one auth source.
 
 ## Usage
 
-`.env` an der gewünschten Stelle anlegen (siehe `.env.example`):
+Create a `.env` wherever you need it (see `.env.example`):
 
 ```bash
 CLOUDFLARE_API_TOKEN=...
 CLOUDFLARE_ACCOUNT_ID=...
 ```
 
-Der Token braucht die Permissions **Account → Cloudflare Pages → Edit** (und für
-`worker-delete` zusätzlich **Account → Workers Scripts → Edit**).
+The token needs the permissions **Account → Cloudflare Pages → Edit** (and for
+`worker-delete` additionally **Account → Workers Scripts → Edit**).
 
 ```bash
-# Alle Kommandos
+# All commands
 docker run --rm baunach/cloudflare-ops:latest help
 
-# Projekte auflisten
+# List projects
 docker run --rm --env-file .env baunach/cloudflare-ops:latest pages-list-projects
 
-# Erst schauen, was gelöscht würde
+# See what would be deleted first
 docker run --rm --env-file .env baunach/cloudflare-ops:latest \
-  pages-purge-deployments --project mein-projekt --dry-run
+  pages-purge-deployments --project my-project --dry-run
 
-# Deployments purgen (Production-Deployment bleibt stehen)
+# Purge deployments (the production deployment is kept)
 docker run --rm --env-file .env baunach/cloudflare-ops:latest \
-  pages-purge-deployments --project mein-projekt
+  pages-purge-deployments --project my-project
 
-# Purge + Projekt löschen in einem Schritt
+# Purge and delete the project in one step
 docker run --rm --env-file .env baunach/cloudflare-ops:latest \
-  pages-delete-project --project mein-projekt --yes
+  pages-delete-project --project my-project --yes
 
-# Worker löschen
+# Delete a Worker
 docker run --rm --env-file .env baunach/cloudflare-ops:latest \
-  worker-delete --name mein-worker --yes
+  worker-delete --name my-worker --yes
 
-# Beliebiges wrangler-Kommando durchreichen
+# Pass through an arbitrary wrangler command
 docker run --rm --env-file .env baunach/cloudflare-ops:latest \
-  wrangler pages deployment list --project-name mein-projekt
+  wrangler pages deployment list --project-name my-project
 ```
 
-## Kommandos
+## Commands
 
-| Kommando | Zweck |
+| Command | Purpose |
 |---|---|
-| `pages-purge-deployments` | Löscht alle Deployments eines Pages-Projekts außer dem aktiven Production-Deployment |
-| `pages-delete-project` | Purge + `wrangler pages project delete` (braucht `--yes`) |
-| `pages-list-projects` | Pages-Projekte des Accounts auflisten |
-| `worker-delete` | Worker samt Versionen löschen (braucht `--yes`) |
-| `wrangler` | Rohes wrangler-Kommando |
-| `help`, `version` | Hilfe / Wrangler-Version |
+| `pages-purge-deployments` | Deletes every deployment of a Pages project except the active production deployment |
+| `pages-delete-project` | Purge plus `wrangler pages project delete` (requires `--yes`) |
+| `pages-list-projects` | Lists the account's Pages projects |
+| `worker-delete` | Deletes a Worker and its versions (requires `--yes`) |
+| `wrangler` | Raw wrangler command |
+| `help`, `version` | Help / wrangler version |
 
-Jedes Kommando kennt `--help`.
+Every command supports `--help`.
 
-## Unterschiede zum Skript aus der Cloudflare-Doku
+## Differences from the script in Cloudflare's docs
 
-Das Doku-Snippet ist als Copy-Paste-Einzeiler gedacht und hat zwei Fallen, die
-hier behoben sind:
+The documented snippet is meant as a copy-paste one-liner and has two pitfalls,
+both fixed here:
 
-1. **Endlosschleife bei fehlerhaftem Token.** Scheitert jedes `delete`, leert
-   sich die Liste nie und der Loop läuft ewig. Hier wird der Token vorab per
-   `wrangler whoami` verifiziert, und eine Runde ohne jeden Fortschritt bricht
-   ab (zusätzlich `--max-rounds` als harte Obergrenze).
-2. **Production-Deployment nur über Fehlertext erkannt.** Hier wird die ID
-   vorab aus `wrangler pages project list --json` gelesen; die Erkennung über
-   den Fehlertext bleibt als Fallback erhalten.
+1. **Infinite loop on a bad token.** If every `delete` fails, the deployment
+   list never empties and the loop runs forever. Here the token is verified up
+   front via `wrangler whoami`, and a round without any progress aborts
+   (plus `--max-rounds` as a hard ceiling).
+2. **Production deployment detected only via error text.** Here the ID is read
+   from `wrangler pages project list --json` up front; detection via the error
+   text remains as a fallback.
 
-Dazu `--dry-run` für alle destruktiven Kommandos.
+On top of that, every destructive command supports `--dry-run`.
 
 ## Image
 
-- Registry: Docker Hub, Account `baunach` → `baunach/cloudflare-ops`
-- Tags: `latest` und die gepinnte Wrangler-Version (z. B. `4.28.1`)
-- Architektur: `linux/amd64`
-- Wrangler ist ins Image gepinnt (kein `npx`-Download zur Laufzeit)
-- Build via GitHub Actions: Push auf `main`, manueller Dispatch, wöchentlich
-  Sonntag 03:00 UTC
+- Registry: Docker Hub, account `baunach` → `baunach/cloudflare-ops`
+- Tags: `latest` and the pinned wrangler version (e.g. `4.112.0`)
+- Architecture: `linux/amd64`
+- Wrangler is pinned into the image (no `npx` download at runtime)
+- Built via GitHub Actions: push to `main`, manual dispatch, weekly on
+  Sunday 03:00 UTC
