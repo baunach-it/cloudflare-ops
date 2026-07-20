@@ -23,9 +23,12 @@ COPY commands/ /usr/local/lib/cloudflare-ops/commands/
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/lib/cloudflare-ops/commands/*.sh
 
-# Wrangler stores cache/config under $HOME — the container runs unprivileged.
+# The container runs unprivileged. WORKDIR matters: wrangler creates its cache
+# relative to the current directory (./.wrangler/cache), so the default cwd of /
+# — owned by root — makes every real command fail with a permission error.
 USER node
 ENV HOME=/home/node
+WORKDIR /home/node
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["help"]
