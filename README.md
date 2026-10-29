@@ -94,3 +94,12 @@ On top of that, every destructive command supports `--dry-run`.
 - Wrangler is pinned into the image (no `npx` download at runtime)
 - Built via GitHub Actions: push to `main`, manual dispatch, weekly on
   Sunday 03:00 UTC
+
+## License
+
+The Dockerfile and scripts in this repository are licensed under [MIT-0](LICENSE).
+
+The image contains third-party software that is subject to its own licenses, including:
+- Node.js from the official `node:22-alpine` base image: MIT (bundled components such as npm under their own licenses)
+- Alpine Linux packages of the base image and those installed by the Dockerfile (`bash`, `jq`, `ca-certificates`): their respective licenses
+- Wrangler, installed via npm during the build: MIT OR Apache-2.0 (its npm dependencies under their own licenses)
